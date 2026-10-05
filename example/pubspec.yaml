@@ -1,0 +1,15 @@
+name: draggable_sidesheet_example
+description: Demonstrates how to use the draggable_sidesheet package.
+publish_to: 'none'
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  draggable_sidesheet:
+    path: ../
+
+flutter:
+  uses-material-design: true
