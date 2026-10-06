@@ -523,4 +523,55 @@ void main() {
       const Rect.fromLTWH(0, 200, 800, 400),
     );
   });
+  testWidgets('fanAlignment anchors to the edge end (safe-area aware)', (
+    tester,
+  ) async {
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.pumpWidget(
+      wrap(
+        DraggableSideSheet(
+          direction: SheetDirection.left,
+          fanAlignment: Alignment.bottomCenter,
+          tabs: threeTabs(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Last icon flush-ish to the bottom: within the 16px clamp slack
+    // of the physical bottom edge.
+    final bottom = tester.getBottomLeft(find.byKey(const Key('ds_tab_2'))).dy;
+    expect(bottom, greaterThan(size.height - 40));
+  });
+
+  testWidgets('fanEdgeOffset pushes icons farther out, never closer', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        DraggableSideSheet(direction: SheetDirection.left, tabs: threeTabs()),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('ds_tab_0')));
+    await tester.pumpAndSettle();
+    final base = tester.getTopLeft(find.byKey(const Key('ds_tab_1'))).dx;
+
+    // Same open state — only the offset changes. The open sheet survives
+    // the rebuild, so the fan repositions without any new interaction.
+    await tester.pumpWidget(
+      wrap(
+        DraggableSideSheet(
+          direction: SheetDirection.left,
+          fanEdgeOffset: 40,
+          tabs: threeTabs(),
+        ),
+      ),
+    );
+    await tester.pump();
+    final pushed = tester.getTopLeft(find.byKey(const Key('ds_tab_1'))).dx;
+
+    expect(pushed, greaterThan(base));
+    expect(pushed - base, closeTo(40, 1));
+  });
 }

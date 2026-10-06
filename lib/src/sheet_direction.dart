@@ -23,7 +23,7 @@ extension SheetDirectionX on SheetDirection {
   /// Signed contribution of [raw] (axis pixel delta or velocity)
   /// toward "more open".
   double openingComponent(double raw) => opensTowardLarger ? raw : -raw;
-
+  double fanAlong(Alignment a) => isHorizontal ? a.y : a.x;
   /// Rect of the sheet at animation progress [t] (0 collapsed,
   /// 1 fully open) with visible extent [expanded].
   Rect panelRect(Size size, double t, double expanded) {

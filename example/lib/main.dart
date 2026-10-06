@@ -83,7 +83,7 @@ class _DemoScreenState extends State<DemoScreen> {
             groupController: _leftGroup,
             expandedSize: 0.7,
             tabs: [
-              SheetTab(iconWidget: Image.asset('assets/anim.gif', gaplessPlayback: true,), label: 'Inbox', badge: 3,
+              SheetTab(iconWidget: Image.asset('assets/anim.gif', gaplessPlayback: true,), iconBezel: false, label: 'Inbox', badge: 3,
                   child: _tabBody('Inbox', Colors.orange)),
               SheetTab(icon: Icons.people_outline, label: 'Invites',
                   child: _tabBody('Invites', Colors.lightBlue)),
@@ -98,6 +98,9 @@ class _DemoScreenState extends State<DemoScreen> {
             direction: SheetDirection.right,
             groupController: _rightGroup,
             expandedSize: 0.7,
+            fanAlignment: Alignment.bottomLeft,
+            fanSpacing: 10,
+            
             tabs: [
               SheetTab(icon: Icons.map_outlined, label: 'Map',
                   child: _tabBody('Map', Colors.teal)),

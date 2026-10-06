@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'sheet_direction.dart';
 import 'panel_controller.dart';
 import 'panel_group_controller.dart';
@@ -43,6 +44,9 @@ class DraggableSideSheet extends StatefulWidget {
   final ValueChanged<int>? onTabClosed;
   final VoidCallback? onOpen;
   final VoidCallback? onClose;
+  final Alignment fanAlignment;
+  final double fanSpacing;
+  final double fanEdgeOffset;
 
   DraggableSideSheet({
     super.key,
@@ -70,8 +74,12 @@ class DraggableSideSheet extends StatefulWidget {
     this.onTabClosed,
     this.onOpen,
     this.onClose,
+    this.fanAlignment = Alignment.center,
+    this.fanSpacing = 8.0,
+    this.fanEdgeOffset = 0.0,
+
   }) : assert(
-    // compile time rules. you cant construct without tabs and content
+         // compile time rules. you cant construct without tabs and content
          child != null || (tabs != null && tabs.isNotEmpty),
          'Provide either child or a non-empty tabs list.',
        ),
@@ -84,7 +92,10 @@ class DraggableSideSheet extends StatefulWidget {
 
   @override
   State<DraggableSideSheet> createState() => _DraggableSideSheetState();
+  
 }
+
+
 
 /// One state hosts BOTH modes (single sheet and tab group). They share:
 /// geometry ([SheetDirectionX]), drag math, coordinator scope, and the
@@ -97,10 +108,29 @@ class DraggableSideSheet extends StatefulWidget {
 class _DraggableSideSheetState extends State<DraggableSideSheet>
     with TickerProviderStateMixin {
   static const _flingVelocity = 350.0;
-  static const _tabSpacing = 8.0;
   bool _lastSettledOpen = false;
   bool _wasOpenForScope = false;
   bool _wasForeign = false;
+
+  double _alongStart(Size size, double extent) {
+    final insets = MediaQuery.paddingOf(context);
+    final (safeStart, safeEnd) = switch (widget.direction) {
+      SheetDirection.left || SheetDirection.right => (insets.top, insets.bottom),
+      SheetDirection.top || SheetDirection.bottom => (insets.left, insets.right),
+    };
+    final edgeLen = widget.direction.isHorizontal ? size.height : size.width;
+    final avail = edgeLen - safeStart - safeEnd;
+    final comp = widget.direction.fanAlong(widget.fanAlignment);
+
+    // comp=-1 flush to the start, 0 centered, +1 flush to the end.
+    var pos = avail < extent ? (avail - extent) / 2 : (avail - extent) / 2 * (1 + comp);
+
+    final abs = safeStart + pos;
+    // Worst-case clamp: never closer than 16px to a physical edge,
+    // even when the row barely fits.
+    final hi = edgeLen - extent - 16.0;
+    return abs.clamp(16.0, hi < 16.0 ? 16.0 : hi);
+  }
 
   // ---- Single-sheet mode ----
   late final PanelController _internalSingle = PanelController();
@@ -591,11 +621,8 @@ class _DraggableSideSheetState extends State<DraggableSideSheet>
     for (final a in _tabAnims) {
       if (a.value > maxT) maxT = a.value;
     }
-
-    final horizontal = widget.direction.isHorizontal;
-    final edgeLen = horizontal ? size.height : size.width;
-    final extent = tabs.length * s + (tabs.length - 1) * _tabSpacing;
-    final start = ((edgeLen - extent) / 2).clamp(16.0, double.infinity);
+    final extent = tabs.length * s + (tabs.length - 1) * widget.fanSpacing;
+    final start = _alongStart(size, extent);
 
     final outerExtent = _outerExtent(size);
 
@@ -631,7 +658,7 @@ class _DraggableSideSheetState extends State<DraggableSideSheet>
             tabs[i],
             i,
             s,
-            start + i * (s + _tabSpacing),
+            start + i * (s + widget.fanSpacing),
             outerExtent,
           ),
       ],
@@ -650,7 +677,7 @@ class _DraggableSideSheetState extends State<DraggableSideSheet>
     // Equal full opacity when collapsed; dim only if open AND covered.
     final covered = open && _group.anyOpenAbove(i);
 
-    var fromEdge = outerExtent + 8;
+    var fromEdge = outerExtent + 8 + widget.fanEdgeOffset.clamp(0.0, double.infinity);
     if (widget.direction == SheetDirection.bottom && widget.keyboardAware) {
       fromEdge += MediaQuery.viewInsetsOf(context).bottom;
     }
@@ -715,9 +742,13 @@ class _DraggableSideSheetState extends State<DraggableSideSheet>
     // Foreign-fade wraps the button, inside the Positioned.
     final fadedButton = _fadeWhenForeign(button);
 
-    final alongEdge =
-        (widget.direction.isHorizontal ? size.height : size.width) / 2 - s / 2;
-    return widget.direction.edgeIcon(visible + 8, alongEdge, s, fadedButton);
+    final alongEdge = _alongStart(size, s);
+    return widget.direction.edgeIcon(
+      visible + 8 + widget.fanEdgeOffset.clamp(0.0, double.infinity),
+      alongEdge,
+      s,
+      fadedButton,
+    );
   }
 }
 
@@ -765,31 +796,33 @@ class _FanTabIcon extends StatelessWidget {
           key: Key('ds_tab_$index'),
           width: s,
           height: s,
-          decoration: BoxDecoration(
-            color:
-                tab.backgroundColor ??
-                railBackgroundColor ??
-                (open
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.surfaceContainerHighest),
-            borderRadius: BorderRadius.circular(s * 0.25),
-            boxShadow: open
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : const [],
-          ),
+          decoration: tab.iconBezel
+              ? BoxDecoration(
+                  color:
+                      tab.backgroundColor ??
+                      railBackgroundColor ??
+                      (open
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.surfaceContainerHighest),
+                  borderRadius: BorderRadius.circular(s * 0.25),
+                  boxShadow: open
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : const [],
+                )
+              : null,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               Center(
                 child: tab.iconWidget != null
                     ? SizedBox.square(
-                        dimension: s * 0.5,
+                        dimension: tab.iconBezel ?  s * 0.5 : s,
                         child: FittedBox(
                           fit: BoxFit.contain,
                           child: tab.iconWidget,
