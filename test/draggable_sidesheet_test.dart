@@ -574,4 +574,26 @@ void main() {
     expect(pushed, greaterThan(base));
     expect(pushed - base, closeTo(40, 1));
   });
+
+  testWidgets('fanInset parks the fan a fixed distance from the edge end', (
+    tester,
+  ) async {
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.pumpWidget(
+      wrap(
+        DraggableSideSheet(
+          direction: SheetDirection.left,
+          fanAlignment: Alignment.bottomCenter,
+          fanInset: 100,
+          tabs: threeTabs(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // bottomCenter alone would sit flush at 600; the inset must push
+    // the last icon's bottom edge exactly 100px up the edge.
+    final bottom = tester.getBottomLeft(find.byKey(const Key('ds_tab_2'))).dy;
+    expect(bottom, closeTo(size.height - 100, 1));
+  });
 }

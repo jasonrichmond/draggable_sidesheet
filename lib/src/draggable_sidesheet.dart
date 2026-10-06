@@ -47,6 +47,7 @@ class DraggableSideSheet extends StatefulWidget {
   final Alignment fanAlignment;
   final double fanSpacing;
   final double fanEdgeOffset;
+  final double fanInset;
 
   DraggableSideSheet({
     super.key,
@@ -77,6 +78,7 @@ class DraggableSideSheet extends StatefulWidget {
     this.fanAlignment = Alignment.center,
     this.fanSpacing = 8.0,
     this.fanEdgeOffset = 0.0,
+    this.fanInset = 0.0,
 
   }) : assert(
          // compile time rules. you cant construct without tabs and content
@@ -128,8 +130,10 @@ class _DraggableSideSheetState extends State<DraggableSideSheet>
     final abs = safeStart + pos;
     // Worst-case clamp: never closer than 16px to a physical edge,
     // even when the row barely fits.
-    final hi = edgeLen - extent - 16.0;
-    return abs.clamp(16.0, hi < 16.0 ? 16.0 : hi);
+    final inset = widget.fanInset < 16.0 ? 16.0 : widget.fanInset;
+    final lo = safeStart + inset;
+    final hi = safeStart + avail - extent - inset;
+    return abs.clamp(lo, hi < lo ? lo : hi);
   }
 
   // ---- Single-sheet mode ----

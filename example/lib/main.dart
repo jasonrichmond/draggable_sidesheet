@@ -100,7 +100,7 @@ class _DemoScreenState extends State<DemoScreen> {
             expandedSize: 0.7,
             fanAlignment: Alignment.bottomLeft,
             fanSpacing: 10,
-            
+            fanInset: 100,
             tabs: [
               SheetTab(icon: Icons.map_outlined, label: 'Map',
                   child: _tabBody('Map', Colors.teal)),
