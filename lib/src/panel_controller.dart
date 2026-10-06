@@ -24,7 +24,6 @@ class PanelController extends ChangeNotifier {
   void toggle() => _isOpen ? close() : open();
 
 void settle({required bool open}) {
-  debugPrint('SETTLE [${debugLabel ?? "unknown"}]: open=$open, changed=${_isOpen != open}');
   if (_isOpen == open) return;
   _isOpen = open;
   notifyListeners();

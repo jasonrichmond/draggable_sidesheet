@@ -22,49 +22,34 @@ class DemoScreen extends StatefulWidget {
 }
 
 class _DemoScreenState extends State<DemoScreen> {
- final _controllers = {
-    for (final d in SheetDirection.values) d: PanelController(d.name),
-  };
+  final _leftGroup = PanelGroupController('left');
+  final _rightGroup = PanelGroupController('right');
+  final _topController = PanelController('top-single');
+  final _bottomController = PanelController('bottom-single');
 
   @override
   void dispose() {
-    for (final c in _controllers.values) {
-      c.dispose();
-    }
+    _leftGroup.dispose();
+    _rightGroup.dispose();
+    _topController.dispose();
+    _bottomController.dispose();
     super.dispose();
   }
 
-  Color _accent(SheetDirection d) => switch (d) {
-        SheetDirection.left => Colors.deepOrange,
-        SheetDirection.right => Colors.teal,
-        SheetDirection.top => Colors.indigo,
-        SheetDirection.bottom => Colors.amber.shade800,
-      };
-
-  IconData _icon(SheetDirection d) => switch (d) {
-        SheetDirection.left => Icons.west,
-        SheetDirection.right => Icons.east,
-        SheetDirection.top => Icons.north,
-        SheetDirection.bottom => Icons.south,
-      };
-
-  Widget _panelContent(SheetDirection d) => Builder(
+  Widget _tabBody(String title, Color accent) => Builder(
         builder: (context) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text('${d.name.toUpperCase()} panel',
-                style: Theme.of(context).textTheme.headlineSmall),
+            Text(title, style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
-            const Text(
-                'Drag the handle or the panel edge. Tap the rail button or '
-                'swipe back toward the screen edge to close.'),
+            const Text('Each tab is its own sheet. Content state survives '
+                'open/close AND covering/uncovering.'),
             const SizedBox(height: 16),
             ...List.generate(
               12,
               (i) => ListTile(
-                leading: CircleAvatar(backgroundColor: _accent(d), child: Text('${i + 1}')),
-                title: Text('${d.name} item ${i + 1}'),
-                subtitle: const Text('Scrolls while the panel stays draggable'),
+                leading: CircleAvatar(backgroundColor: accent, child: Text('${i + 1}')),
+                title: Text('$title item ${i + 1}'),
                 onTap: () {},
               ),
             ),
@@ -72,33 +57,82 @@ class _DemoScreenState extends State<DemoScreen> {
         ),
       );
 
-    @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.blueGrey.shade900,
       body: Stack(
         children: [
-          // Base layer behind the sheets.
           const Center(
             child: Text(
-              'Four panels, four edges.\nTap an arrow to open one.',
+              'LEFT: stacked sheets (pure overlap)\n'
+              'RIGHT: stacked sheets with stagger\n'
+              'TOP/BOTTOM: single panels\n\n'
+              'Tap a tab to pull its sheet forward.\n'
+              'Tap outside to close everything.\n'
+              'Icons ride past sheet edges — never obstruct content.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 20),
+              style: TextStyle(fontSize: 14),
             ),
           ),
-          for (final d in SheetDirection.values)
-            DraggableSideSheet(
-              key: ValueKey(d),
-              direction: d,
-              controller: _controllers[d],
-              expandedSize: d.isHorizontal ? 0.55 : 0.45,
-              railIcon: _icon(d),
-              railBackgroundColor: _accent(d),
-              railIconColor: Colors.white,
-              railBadge: d == SheetDirection.left ? 3 : null,
-              scrimColor: const Color(0x00000000),
-              child: _panelContent(d),
-            ),
+
+          // LEFT: stacked sheets, pure overlap
+          DraggableSideSheet(
+            key: const ValueKey('left-group'),
+            direction: SheetDirection.left,
+            groupController: _leftGroup,
+            expandedSize: 0.7,
+            tabs: [
+              SheetTab(icon: Icons.inbox_outlined, label: 'Inbox', badge: 3,
+                  child: _tabBody('Inbox', Colors.orange)),
+              SheetTab(icon: Icons.people_outline, label: 'Invites',
+                  child: _tabBody('Invites', Colors.lightBlue)),
+              SheetTab(icon: Icons.star_border, label: 'Favorites',
+                  child: _tabBody('Favorites', Colors.purpleAccent)),
+            ],
+          ),
+
+          // RIGHT: stacked sheets with stagger (peek removed — all aligned)
+          DraggableSideSheet(
+            key: const ValueKey('right-group'),
+            direction: SheetDirection.right,
+            groupController: _rightGroup,
+            expandedSize: 0.7,
+            staggeredDismiss: true,
+            staggerDelay: const Duration(milliseconds: 80),
+            tabs: [
+              SheetTab(icon: Icons.map_outlined, label: 'Map',
+                  child: _tabBody('Map', Colors.teal)),
+              SheetTab(icon: Icons.route_outlined, label: 'Routes',
+                  child: _tabBody('Routes', Colors.greenAccent)),
+              SheetTab(icon: Icons.settings_outlined, label: 'Settings',
+                  child: _tabBody('Settings', Colors.cyanAccent)),
+            ],
+          ),
+
+          // TOP: single panel
+          DraggableSideSheet(
+            key: const ValueKey('top-single'),
+            direction: SheetDirection.top,
+            controller: _topController,
+            expandedSize: 0.45,
+            railBackgroundColor: Colors.indigo,
+            railIconColor: Colors.white,
+            scrimColor: const Color(0x00000000),
+            child: _tabBody('TOP single', Colors.indigo),
+          ),
+
+          // BOTTOM: single panel
+          DraggableSideSheet(
+            key: const ValueKey('bottom-single'),
+            direction: SheetDirection.bottom,
+            controller: _bottomController,
+            expandedSize: 0.45,
+            railBackgroundColor: Colors.amber.shade800,
+            railIconColor: Colors.white,
+            scrimColor: const Color(0x00000000),
+            child: _tabBody('BOTTOM single', Colors.amber.shade800),
+          ),
         ],
       ),
     );
