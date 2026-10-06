@@ -428,4 +428,99 @@ void main() {
     expect(find.bySemanticsLabel('Favorites'), findsOneWidget);
     handle.dispose();
   });
+
+  // ---- Geometry guards (the two regressions that actually happened) ----
+
+  testWidgets('fan parks beyond the outermost open sheet '
+      '(icon obstruction guard)', (tester) async {
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.pumpWidget(
+      wrap(
+        DraggableSideSheet(direction: SheetDirection.left, tabs: threeTabs()),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('ds_tab_0')));
+    await tester.pumpAndSettle();
+
+    // expandedSize 0.7 × width → outermost sheet ends at 0.7·width.
+    // Every parked icon must sit strictly beyond it, or icons sit on
+    // sheet content (the peek-cascade regression this guards against).
+    final outermost = size.width * 0.7;
+    for (var i = 0; i < 3; i++) {
+      final box = tester.renderObject<RenderBox>(find.byKey(Key('ds_tab_$i')));
+      expect(
+        box.localToGlobal(Offset.zero).dx,
+        greaterThan(outermost),
+        reason: 'tab $i icon overlaps sheet content',
+      );
+    }
+  });
+
+  testWidgets('all open sheets share identical rects (notching guard)', (
+    tester,
+  ) async {
+    final group = PanelGroupController();
+    await tester.pumpWidget(
+      wrap(
+        DraggableSideSheet(
+          direction: SheetDirection.left,
+          groupController: group,
+          tabs: threeTabs(
+            body: (i) => SizedBox.expand(key: Key('tab_${i}_content')),
+          ),
+        ),
+      ),
+    );
+
+    group.open(0);
+    await tester.pumpAndSettle();
+    group.open(2); // non-adjacent pair — stacking offsets would show up here
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getRect(find.byKey(const Key('tab_0_content'))),
+      equals(tester.getRect(find.byKey(const Key('tab_2_content')))),
+      reason: 'open sheets must occupy one aligned rect, no notching',
+    );
+  });
+
+  test('panelRect geometry for all four directions', () {
+    const size = Size(800, 600);
+    const expanded = 400.0;
+    // Collapsed (t=0): sheet entirely off-screen along its anchor edge.
+    expect(
+      SheetDirection.left.panelRect(size, 0, expanded),
+      const Rect.fromLTWH(-400, 0, 400, 600),
+    );
+    expect(
+      SheetDirection.right.panelRect(size, 0, expanded),
+      const Rect.fromLTWH(800, 0, 400, 600),
+    );
+    expect(
+      SheetDirection.top.panelRect(size, 0, expanded),
+      const Rect.fromLTWH(0, -400, 800, 400),
+    );
+    expect(
+      SheetDirection.bottom.panelRect(size, 0, expanded),
+      const Rect.fromLTWH(0, 600, 800, 400),
+    );
+    // Open (t=1): flush with the anchor edge, same extent.
+    expect(
+      SheetDirection.left.panelRect(size, 1, expanded),
+      const Rect.fromLTWH(0, 0, 400, 600),
+    );
+    expect(
+      SheetDirection.right.panelRect(size, 1, expanded),
+      const Rect.fromLTWH(400, 0, 400, 600),
+    );
+    expect(
+      SheetDirection.top.panelRect(size, 1, expanded),
+      const Rect.fromLTWH(0, 0, 800, 400),
+    );
+    expect(
+      SheetDirection.bottom.panelRect(size, 1, expanded),
+      const Rect.fromLTWH(0, 200, 800, 400),
+    );
+  });
 }

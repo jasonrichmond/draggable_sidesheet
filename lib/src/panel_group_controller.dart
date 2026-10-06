@@ -79,4 +79,9 @@ class PanelGroupController extends ChangeNotifier {
   @override
   String toString() =>
       'PanelGroupController(${debugLabel ?? 'unlabelled'}, open: $_open)';
+
+  bool anyOpenAbove(int index) => _open.any((i) => i > index);
+
+  @internal
+  Set<int> get openTabsRef => _open;
 }
